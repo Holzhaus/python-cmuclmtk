@@ -123,7 +123,7 @@ def wfreq2vocab(wfreq_file, output_file, top=None, gt=None, records=1000000, ver
         raise ConversionError("'%s' returned with non-zero exit status '%s'" % (cmd[0], exitcode))
 
 
-def text2vocab_file(text, output_file, text2wfreq_kwargs={}, wfreq2vocab_kwargs={}):
+def text2vocab(text, output_file, text2wfreq_kwargs={}, wfreq2vocab_kwargs={}):
     """
         Convienience function that uses text2wfreq and wfreq2vocab to create a vocabulary file from text.
     """
@@ -247,7 +247,7 @@ def text2lm(text, output_file, vocab_file=None, text2idngram_kwargs={}, idngram2
         # Create temporary vocab file
         with tempfile.NamedTemporaryFile(suffix='.vocab', delete=False) as f:
             used_vocab_file = f.name
-        text2vocab_file(text, used_vocab_file)
+        text2vocab(text, used_vocab_file)
 
     # Create temporary idngram file
     with tempfile.NamedTemporaryFile(suffix='.idngram', delete=False) as f:
