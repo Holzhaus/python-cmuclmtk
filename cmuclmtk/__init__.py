@@ -30,7 +30,9 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
     Wrapper library for accessing the language model tools for CMU Sphinx (CMUCLMTK)
-    Note: Currently only the tools text2wfreq, wfreq2vocab, text2idngram and idngram2lm are wrapped.
+
+    TODO:
+       - add wrapper functions for tools 'evallm' and 'interpolate'
 """
 
 import os
@@ -39,6 +41,7 @@ import subprocess
 import shutil
 import sys
 import logging
+from contextlib import contextmanager
 
 logger = logging.getLogger(__name__)
 
@@ -61,18 +64,20 @@ def check_cmuclmtk_installation():
 if not check_cmuclmtk_installation():
     raise OSError("CMUCLMTK command(s) missing or not in $PATH.")
 
-# TODO: add wrapper functions for tools
-#  text2wngram
-#  ngram2mgram
-#  wngram2idngram
-#  idngram2stats
-#  mergeidngram
-#  binlm2arpa
-#  evallm
-#  interpolate
-
 class ConversionError(Exception):
     pass
+
+@contextmanager
+def do_in_tempdir():
+    # Save CWD
+    curdir = os.getcwd()
+    # Go into tempdir
+    tempdir = tempfile.mkdtemp(prefix='cmuclmtk-')
+    os.chdir(tempdir)
+    yield
+    # Go back and throw away tempdir
+    os.chdir(curdir)
+    shutil.rmtree(tempdir)
 
 def text2wfreq(text, output_file, hashtablesize=1000000, verbosity=2):
     """
@@ -122,22 +127,41 @@ def wfreq2vocab(wfreq_file, output_file, top=None, gt=None, records=1000000, ver
     if exitcode != 0:
         raise ConversionError("'%s' returned with non-zero exit status '%s'" % (cmd[0], exitcode))
 
-
-def text2vocab(text, output_file, text2wfreq_kwargs={}, wfreq2vocab_kwargs={}):
+def text2wngram(text, output_file, n=3, chars=63636363, words=9090909, compress=False, verbosity=2):
     """
-        Convienience function that uses text2wfreq and wfreq2vocab to create a vocabulary file from text.
+        List of every word n-gram which occurred in the text, along with its number of occurrences.
+        The maximum numbers of charactors and words that can be stored in the buffer are given by the chars and words parameters.
     """
-    with tempfile.NamedTemporaryFile(suffix='.wfreq', delete=False) as f:
-        wfreq_file = f.name
+    cmd = ['text2wngram']
+    
+    if n:
+        cmd.extend(['-n', n])
+    
+    if chars:
+        cmd.extend(['-chars', chars])
 
-    try:
-        text2wfreq(text, wfreq_file, **text2wfreq_kwargs)
-        wfreq2vocab(wfreq_file, output_file, **wfreq2vocab_kwargs)
-    except ConversionError:
-        raise
-    finally:
-        os.remove(wfreq_file)
+    if words:
+        cmd.extend(['-words', words])
 
+    if compress:
+        cmd.append('-compress')
+    
+    if verbosity:
+        cmd.extend(['-verbosity', verbosity])
+
+    # Ensure that every parameter is of type 'str'
+    cmd = [str(x) for x in cmd]
+
+    with tempfile.SpooledTemporaryFile(mode='w+') as input_f:
+        input_f.write(text)
+        input_f.seek(0)
+        with open(output_file,'w+') as output_f:
+            with do_in_tempdir():
+                exitcode = subprocess.call(cmd, stdin=input_f, stdout=output_f)
+            logger.debug("Command '%s' returned with exit code '%d'." % (' '.join(cmd), exitcode))
+
+    if exitcode != 0:
+        raise ConversionError("'%s' returned with non-zero exit status '%s'" % (cmd[0], exitcode))
 
 def text2idngram(text, vocab_file, output_file, buffersize=100, hashtablesize=2000000, files=20, compress=False, verbosity=2, n=3, write_ascii=False, fof_size=10):
     """
@@ -148,20 +172,103 @@ def text2idngram(text, vocab_file, output_file, buffersize=100, hashtablesize=20
         The function will also report the frequency of frequency of n-grams, and the corresponding recommended value for the spec_num parameters of idngram2lm. The fof_size parameter allows the user to specify the length of this list. A value of 0 will result in no list being displayed.
         In the case of really huge quantities of data, it may be the case that more temporary files are generated than can be opened at one time by the filing system. In this case, the temporary files will be merged in chunks, and the files parameter can be used to specify how many files are allowed to be open at one time.
     """
-    cmd = ['text2idngram', '-vocab', vocab_file,
-                           '-idngram', output_file,
-                           '-buffer', buffersize,
-                           '-hash', hashtablesize,
-                           '-files', files,
-                           '-verbosity',verbosity,
-                           '-n',n,
-                           '-fof_size',fof_size]
+    cmd = ['text2idngram', '-vocab', os.path.abspath(vocab_file),
+                           '-idngram', os.path.abspath(output_file)]
 
-    # Save CWD
-    curdir = os.getcwd()
-    # Go into tempdir
-    tempdir = tempfile.mkdtemp(prefix='cmuclmtk-')
-    os.chdir(tempdir)
+    if buffersize:
+        cmd.extend(['-buffer', buffersize])
+
+    if hashtablesize:
+        cmd.extend(['-hash', hashtablesize])
+
+    if files:
+        cmd.extend(['-files', files])
+
+    if verbosity:
+        cmd.extend(['-verbosity', verbosity])
+
+    if n:
+        cmd.extend(['-n', n])
+
+    if fof_size:
+        cmd.extend(['-fof_size', fof_size])
+
+    if compress:
+        cmd.append('-compress')
+
+    if write_ascii:
+        cmd.append('-write_ascii')
+
+    # Ensure that every parameter is of type 'str'
+    cmd = [str(x) for x in cmd]
+    
+    with tempfile.SpooledTemporaryFile() as input_f:
+        input_f.write(text)
+        input_f.seek(0)
+        with tempfile.SpooledTemporaryFile() as output_f:
+            with do_in_tempdir():
+                exitcode = subprocess.call(cmd, stdin=input_f, stdout=output_f)
+            logger.debug("Command '%s' returned with exit code '%d'." % (' '.join(cmd), exitcode))
+            output = output_f.read()
+
+    if exitcode != 0:
+        raise ConversionError("'%r' returned with non-zero exit status '%s'" % (cmd, exitcode))
+
+    return output
+
+def ngram2mgram(input_file, output_file, n, m, words=False, ascii_idngram=False):
+    """
+        Takes either a word n-gram file, or an id n-gram file and outputs a file of the same type where m < n.
+    """
+    cmd = ['ngram2mgram', '-n', n,
+                          '-m', m]
+
+    if words and ascii_idngram:
+        raise ConversionError("Parameters 'words' and 'ascii_idngram' cannot both be True")
+
+    if words:
+        cmd.append('-words')
+    elif ascii_idngram:
+        cmd.append('-ascii')
+    else:
+        cmd.append('-binary')
+
+    # Ensure that every parameter is of type 'str'
+    cmd = [str(x) for x in cmd]
+
+    with open(input_file,'r') as input_f:
+        with open(output_file,'w+') as output_f:
+            exitcode = subprocess.call(cmd, stdin=input_f, stdout=output_f)
+            logger.debug("Command '%s' returned with exit code '%d'." % (' '.join(cmd), exitcode))
+
+    if exitcode != 0:
+        raise ConversionError("'%s' returned with non-zero exit status '%s'" % (cmd[0], exitcode))
+
+def wngram2idngram(input_file, vocab_file, output_file, buffersize=100, hashtablesize=2000000, files=20, compress=False, verbosity=2, n=3, write_ascii=False, fof_size=10):
+    """
+        Takes a word N-gram file and a vocabulary file and lists every id n-gram which occurred in the text, along with its number of occurrences, in either ASCII or binary format.
+
+        Note : It is important that the vocabulary file is in alphabetical order. If you are using vocabularies generated by wfreq2vocab then this should not be an issue, as they will already be alphabetically sorted.
+    """
+    cmd = ['wngram2idngram', '-vocab', os.path.abspath(vocab_file),
+                             '-idngram', os.path.abspath(output_file)]
+    if buffersize:
+        cmd.extend(['-buffer', buffersize])
+
+    if hashtablesize:
+        cmd.extend(['-hash', hashtablesize])
+
+    if files:
+        cmd.extend(['-files', files])
+
+    if verbosity:
+        cmd.extend(['-verbosity', verbosity])
+
+    if n:
+        cmd.extend(['-n', n])
+
+    if fof_size:
+        cmd.extend(['-fof_size', fof_size])
 
     if compress:
         cmd.append('-compress')
@@ -175,19 +282,74 @@ def text2idngram(text, vocab_file, output_file, buffersize=100, hashtablesize=20
         input_f.write(text)
         input_f.seek(0)
         with tempfile.SpooledTemporaryFile() as output_f:
-            exitcode = subprocess.call(cmd, stdin=input_f, stdout=output_f)
+            with do_in_tempdir():
+                exitcode = subprocess.call(cmd, stdin=input_f, stdout=output_f)
             logger.debug("Command '%s' returned with exit code '%d'." % (' '.join(cmd), exitcode))
             output = output_f.read()
-
-    # Go back and throw away tempdir
-    os.chdir(curdir)
-    shutil.rmtree(tempdir)
 
     if exitcode != 0:
         raise ConversionError("'%r' returned with non-zero exit status '%s'" % (cmd, exitcode))
 
     return output
 
+def idngram2stats(input_file, output_file, n=3, fof_size=50, verbosity=2, ascii_input=False):
+    """
+        Lists the frequency-of-frequencies for each of the 2-grams, ... , n-grams, which can enable the user to choose appropriate cut-offs, and to specify appropriate memory requirements with the spec_num parameter in idngram2lm.
+    """
+    cmd = ['idngram2stats']
+    if n:
+        cmd.extend(['-n', n])
+    
+    if fof_size:
+        cmd.extend(['-fof_size'], fof_size)
+
+    if verbosity:
+        cmd.extend(['-verbosity'], verbosity)
+
+    if ascii_input:
+        cmd.append(['-ascii_input'])
+
+    # Ensure that every parameter is of type 'str'
+    cmd = [str(x) for x in cmd]
+
+    with open(input_file,'r') as input_f:
+        with open(output_file,'w+') as output_f:
+            exitcode = subprocess.call(cmd, stdin=input_f, stdout=output_f)
+            logger.debug("Command '%s' returned with exit code '%d'." % (' '.join(cmd), exitcode))
+
+    if exitcode != 0:
+        raise ConversionError("'%s' returned with non-zero exit status '%s'" % (cmd[0], exitcode))
+
+def mergeidngram(output_file, *input_files, n=3, ascii_input=False, ascii_output=False):
+    """
+        Takes a set of id n-gram files (in either binary (by default) or ASCII (if specified) format - note that they should all be in the same format, however) and outputs a merged id N-gram.
+
+        Notes : This function can also be used to convert id n-gram files between ascii and binary formats.
+    """
+    cmd = ['mergeidngram']
+    if n:
+        cmd.extend(['-n', n])
+    
+    if ascii_input:
+        cmd.append('-ascii_input')
+    
+    if ascii_output:
+        cmd.append('-ascii_output')
+
+    if len(input_file) > 1:
+        raise MergeError("mergeidngram needs at least 1 input file")
+
+    cmd.extend(input_files)
+
+    # Ensure that every parameter is of type 'str'
+    cmd = [str(x) for x in cmd]
+
+    with open(output_file,'w+') as output_f:
+        exitcode = subprocess.call(cmd, stdout=output_f)
+        logger.debug("Command '%s' returned with exit code '%d'." % (' '.join(cmd), exitcode))
+
+    if exitcode != 0:
+        raise ConversionError("'%s' returned with non-zero exit status '%s'" % (cmd[0], exitcode))
 
 def idngram2lm(idngram_file, vocab_file, output_file, context_file=None, vocab_type=1, oov_fraction=0.5, four_byte_counts=False, min_unicount=0, zeroton_fraction=False, n=3, verbosity=2, arpa_output=True, ascii_input=False):
     """
@@ -201,8 +363,8 @@ def idngram2lm(idngram_file, vocab_file, output_file, context_file=None, vocab_t
      # [ -disc_ranges 1 7 7 ]
      # [ -cutoffs 0 ... 0 ]
 
-    cmd = ['idngram2lm', '-idngram', idngram_file,
-                         '-vocab', vocab_file,
+    cmd = ['idngram2lm', '-idngram', os.path.abspath(idngram_file),
+                         '-vocab', os.path.abspath(vocab_file),
                          '-vocab_type', vocab_type,
                          '-oov_fraction', oov_fraction,
                          '-min_unicount',min_unicount,
@@ -236,6 +398,44 @@ def idngram2lm(idngram_file, vocab_file, output_file, context_file=None, vocab_t
         raise ConversionError("'%s' returned with non-zero exit status '%s'" % (cmd[0], exitcode))
 
     return output
+
+def binlm2arpa(input_file, output_file, verbosity=2):
+    """
+        Converts a binary format language model, as generated by idngram2lm, into an an ARPA format language model.
+    """
+    cmd = ['binlm2arpa', '-binary', input_file,
+                         '-arpa'. output_file]
+    
+    if verbosity:
+        cmd.extend(['-verbosity', verbosity])
+    
+    # Ensure that every parameter is of type 'str'
+    cmd = [str(x) for x in cmd]
+
+    with tempfile.SpooledTemporaryFile() as out:
+        exitcode = subprocess.call(cmd, stdout=out)
+        logger.debug("Command '%s' returned with exit code '%d'." % (' '.join(cmd), exitcode))
+        output = out.read()
+
+    if exitcode != 0:
+        raise ConversionError("'%s' returned with non-zero exit status '%s'" % (cmd[0], exitcode))
+
+    return output
+
+def text2vocab(text, output_file, text2wfreq_kwargs={}, wfreq2vocab_kwargs={}):
+    """
+        Convienience function that uses text2wfreq and wfreq2vocab to create a vocabulary file from text.
+    """
+    with tempfile.NamedTemporaryFile(suffix='.wfreq', delete=False) as f:
+        wfreq_file = f.name
+
+    try:
+        text2wfreq(text, wfreq_file, **text2wfreq_kwargs)
+        wfreq2vocab(wfreq_file, output_file, **wfreq2vocab_kwargs)
+    except ConversionError:
+        raise
+    finally:
+        os.remove(wfreq_file)
 
 def text2lm(text, output_file, vocab_file=None, text2idngram_kwargs={}, idngram2lm_kwargs={}):
     """
