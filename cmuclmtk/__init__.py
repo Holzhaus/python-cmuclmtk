@@ -90,7 +90,7 @@ def text2wfreq(text, output_file, hashtablesize=1000000, verbosity=2):
         input_f.seek(0)
         with open(output_file,'w+') as output_f:
             exitcode = subprocess.call(cmd, stdin=input_f, stdout=output_f)
-            logger.debug("Command '%s' returned with exit code '%d'." % (' '.join(cmd)), exitcode)
+            logger.debug("Command '%s' returned with exit code '%d'." % (' '.join(cmd), exitcode))
 
     if exitcode != 0:
         raise ConversionError("'%s' returned with non-zero exit status '%s'" % (cmd[0], exitcode))
@@ -117,7 +117,7 @@ def wfreq2vocab(wfreq_file, output_file, top=None, gt=None, records=1000000, ver
     with open(wfreq_file,'r') as input_f:
         with open(output_file,'w+') as output_f:
             exitcode = subprocess.call(cmd, stdin=input_f, stdout=output_f)
-            logger.debug("Command '%s' returned with exit code '%d'." % (' '.join(cmd)), exitcode)
+            logger.debug("Command '%s' returned with exit code '%d'." % (' '.join(cmd), exitcode))
 
     if exitcode != 0:
         raise ConversionError("'%s' returned with non-zero exit status '%s'" % (cmd[0], exitcode))
@@ -176,7 +176,7 @@ def text2idngram(text, vocab_file, output_file, buffersize=100, hashtablesize=20
         input_f.seek(0)
         with tempfile.SpooledTemporaryFile() as output_f:
             exitcode = subprocess.call(cmd, stdin=input_f, stdout=output_f)
-            logger.debug("Command '%s' returned with exit code '%d'." % (' '.join(cmd)), exitcode)
+            logger.debug("Command '%s' returned with exit code '%d'." % (' '.join(cmd), exitcode))
             output = output_f.read()
 
     # Go back and throw away tempdir
@@ -229,7 +229,7 @@ def idngram2lm(idngram_file, vocab_file, output_file, context_file=None, vocab_t
 
     with tempfile.SpooledTemporaryFile() as output_f:
         exitcode = subprocess.call(cmd, stdout=output_f)
-        logger.debug("Command '%s' returned with exit code '%d'." % (' '.join(cmd)), exitcode)
+        logger.debug("Command '%s' returned with exit code '%d'." % (' '.join(cmd), exitcode))
         output = output_f.read()
 
     if exitcode != 0:
