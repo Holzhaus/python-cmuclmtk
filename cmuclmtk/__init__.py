@@ -43,13 +43,10 @@ import sys
 import logging
 from contextlib import contextmanager
 
-logger = logging.getLogger(__name__)
-
 if sys.version_info < (3, 3):
     import distutils.spawn
 
 def check_cmuclmtk_installation():
-
     if sys.version_info < (3, 3):
         cmd_exists = distutils.spawn.find_executable
     else:
@@ -58,6 +55,7 @@ def check_cmuclmtk_installation():
     cmds = ('text2wfreq', 'wfreq2vocab', 'text2wngram', 'text2idngram', 'ngram2mgram', 'wngram2idngram', 'idngram2stats', 'mergeidngram', 'idngram2lm', 'binlm2arpa')
     for cmd in cmds:
         if not cmd_exists(cmd):
+            logger = logging.getLogger(__name__)
             logger.critical("Can't find CMUCLMTK command '%s'! Please check if CMUCLMTK is installed and in your $PATH." % cmd)
             return False
     return True
@@ -85,6 +83,7 @@ def output_to_debuglogger():
     with tempfile.SpooledTemporaryFile() as f:
         yield f
         f.seek(0)
+        logger = logging.getLogger(__name__)
         for line in f:
             message = line.strip()
             if message:
@@ -107,7 +106,9 @@ def text2wfreq(text, output_file, hashtablesize=1000000, verbosity=2):
         with open(output_file,'w+') as output_f:
             with  output_to_debuglogger() as err_f:
                 exitcode = subprocess.call(cmd, stdin=input_f, stdout=output_f, stderr=err_f)
-        logger.debug("Command '%s' returned with exit code '%d'." % (' '.join(cmd), exitcode))
+    
+    logger = logging.getLogger(__name__)
+    logger.debug("Command '%s' returned with exit code '%d'." % (' '.join(cmd), exitcode))
 
     if exitcode != 0:
         raise ConversionError("'%s' returned with non-zero exit status '%s'" % (cmd[0], exitcode))
@@ -135,7 +136,9 @@ def wfreq2vocab(wfreq_file, output_file, top=None, gt=None, records=1000000, ver
         with open(output_file,'w+') as output_f:
             with  output_to_debuglogger() as err_f:
                 exitcode = subprocess.call(cmd, stdin=input_f, stdout=output_f, stderr=err_f)
-            logger.debug("Command '%s' returned with exit code '%d'." % (' '.join(cmd), exitcode))
+
+    logger = logging.getLogger(__name__)
+    logger.debug("Command '%s' returned with exit code '%d'." % (' '.join(cmd), exitcode))
 
     if exitcode != 0:
         raise ConversionError("'%s' returned with non-zero exit status '%s'" % (cmd[0], exitcode))
@@ -172,7 +175,9 @@ def text2wngram(text, output_file, n=3, chars=63636363, words=9090909, compress=
             with  output_to_debuglogger() as err_f:
                 with do_in_tempdir():
                     exitcode = subprocess.call(cmd, stdin=input_f, stdout=output_f, stderr=err_f)
-            logger.debug("Command '%s' returned with exit code '%d'." % (' '.join(cmd), exitcode))
+
+    logger = logging.getLogger(__name__)
+    logger.debug("Command '%s' returned with exit code '%d'." % (' '.join(cmd), exitcode))
 
     if exitcode != 0:
         raise ConversionError("'%s' returned with non-zero exit status '%s'" % (cmd[0], exitcode))
@@ -216,15 +221,17 @@ def text2idngram(text, vocab_file, output_file, buffersize=100, hashtablesize=20
     # Ensure that every parameter is of type 'str'
     cmd = [str(x) for x in cmd]
     
-    with tempfile.SpooledTemporaryFile() as input_f:
-        input_f.write(text)
-        input_f.seek(0)
-        with tempfile.SpooledTemporaryFile() as output_f:
+    with tempfile.SpooledTemporaryFile() as output_f:
+        with tempfile.SpooledTemporaryFile() as input_f:
+            input_f.write(text)
+            input_f.seek(0)
             with  output_to_debuglogger() as err_f:
                 with do_in_tempdir():
                     exitcode = subprocess.call(cmd, stdin=input_f, stdout=output_f, stderr=err_f)
-            logger.debug("Command '%s' returned with exit code '%d'." % (' '.join(cmd), exitcode))
-            output = output_f.read()
+        output = output_f.read()
+
+    logger = logging.getLogger(__name__)
+    logger.debug("Command '%s' returned with exit code '%d'." % (' '.join(cmd), exitcode))
 
     if exitcode != 0:
         raise ConversionError("'%r' returned with non-zero exit status '%s'" % (cmd, exitcode))
@@ -255,7 +262,9 @@ def ngram2mgram(input_file, output_file, n, m, words=False, ascii_idngram=False)
         with open(output_file,'w+') as output_f:
             with  output_to_debuglogger() as err_f:
                 exitcode = subprocess.call(cmd, stdin=input_f, stdout=output_f, stderr=err_f)
-            logger.debug("Command '%s' returned with exit code '%d'." % (' '.join(cmd), exitcode))
+    
+    logger = logging.getLogger(__name__)
+    logger.debug("Command '%s' returned with exit code '%d'." % (' '.join(cmd), exitcode))
 
     if exitcode != 0:
         raise ConversionError("'%s' returned with non-zero exit status '%s'" % (cmd[0], exitcode))
@@ -294,15 +303,17 @@ def wngram2idngram(input_file, vocab_file, output_file, buffersize=100, hashtabl
     # Ensure that every parameter is of type 'str'
     cmd = [str(x) for x in cmd]
     
-    with tempfile.SpooledTemporaryFile() as input_f:
-        input_f.write(text)
-        input_f.seek(0)
-        with tempfile.SpooledTemporaryFile() as output_f:
+    with tempfile.SpooledTemporaryFile() as output_f:
+        with tempfile.SpooledTemporaryFile() as input_f:
+            input_f.write(text)
+            input_f.seek(0)
             with  output_to_debuglogger() as err_f:
                 with do_in_tempdir():
                     exitcode = subprocess.call(cmd, stdin=input_f, stdout=output_f, stderr=err_f)
-            logger.debug("Command '%s' returned with exit code '%d'." % (' '.join(cmd), exitcode))
-            output = output_f.read()
+        output = output_f.read()
+    
+    logger = logging.getLogger(__name__)
+    logger.debug("Command '%s' returned with exit code '%d'." % (' '.join(cmd), exitcode))
 
     if exitcode != 0:
         raise ConversionError("'%r' returned with non-zero exit status '%s'" % (cmd, exitcode))
@@ -333,7 +344,9 @@ def idngram2stats(input_file, output_file, n=3, fof_size=50, verbosity=2, ascii_
         with open(output_file,'w+') as output_f:
             with  output_to_debuglogger() as err_f:
                 exitcode = subprocess.call(cmd, stdin=input_f, stdout=output_f, stderr=err_f)
-            logger.debug("Command '%s' returned with exit code '%d'." % (' '.join(cmd), exitcode))
+    
+    logger = logging.getLogger(__name__)
+    logger.debug("Command '%s' returned with exit code '%d'." % (' '.join(cmd), exitcode))
 
     if exitcode != 0:
         raise ConversionError("'%s' returned with non-zero exit status '%s'" % (cmd[0], exitcode))
@@ -365,7 +378,9 @@ def mergeidngram(output_file, input_files, n=3, ascii_input=False, ascii_output=
     with open(output_file,'w+') as output_f:
         with  output_to_debuglogger() as err_f:
             exitcode = subprocess.call(cmd, stdout=output_f, stderr=err_f)
-        logger.debug("Command '%s' returned with exit code '%d'." % (' '.join(cmd), exitcode))
+    
+    logger = logging.getLogger(__name__)
+    logger.debug("Command '%s' returned with exit code '%d'." % (' '.join(cmd), exitcode))
 
     if exitcode != 0:
         raise ConversionError("'%s' returned with non-zero exit status '%s'" % (cmd[0], exitcode))
@@ -411,8 +426,10 @@ def idngram2lm(idngram_file, vocab_file, output_file, context_file=None, vocab_t
     with tempfile.SpooledTemporaryFile() as output_f:
         with  output_to_debuglogger() as err_f:
             exitcode = subprocess.call(cmd, stdout=output_f, stderr=err_f)
-        logger.debug("Command '%s' returned with exit code '%d'." % (' '.join(cmd), exitcode))
         output = output_f.read()
+    
+    logger = logging.getLogger(__name__)
+    logger.debug("Command '%s' returned with exit code '%d'." % (' '.join(cmd), exitcode))
 
     if exitcode != 0:
         raise ConversionError("'%s' returned with non-zero exit status '%s'" % (cmd[0], exitcode))
@@ -435,8 +452,10 @@ def binlm2arpa(input_file, output_file, verbosity=2):
     with tempfile.SpooledTemporaryFile() as output_f:
         with  output_to_debuglogger() as err_f:
             exitcode = subprocess.call(cmd, stdout=output_f, stderr=err_f)
-        logger.debug("Command '%s' returned with exit code '%d'." % (' '.join(cmd), exitcode))
         output = output_f.read()
+    
+    logger = logging.getLogger(__name__)
+    logger.debug("Command '%s' returned with exit code '%d'." % (' '.join(cmd), exitcode))        
 
     if exitcode != 0:
         raise ConversionError("'%s' returned with non-zero exit status '%s'" % (cmd[0], exitcode))
@@ -493,6 +512,10 @@ if __name__ == "__main__":
 
     # Initialize logging system
     logging.basicConfig()
+
+    logger = logging.getLogger()
+    
+    # Set root logger to DEBUG level
     if '--debug' in sys.argv:
         logger.setLevel(logging.DEBUG)
     
