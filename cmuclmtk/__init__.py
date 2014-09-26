@@ -85,7 +85,7 @@ def output_to_debuglogger():
         f.seek(0)
         logger = logging.getLogger(__name__)
         for line in f:
-            message = line.strip()
+            message = (line.decode('utf-8') if sys.version_info >= (3,) and type(line) is bytes else line).strip()
             if message:
                 logger.debug(message)
 
@@ -100,8 +100,8 @@ def text2wfreq(text, output_file, hashtablesize=1000000, verbosity=2):
     # Ensure that every parameter is of type 'str'
     cmd = [str(x) for x in cmd]
 
-    with tempfile.SpooledTemporaryFile(mode='w+') as input_f:
-        input_f.write(text)
+    with tempfile.SpooledTemporaryFile() as input_f:
+        input_f.write(text.encode('utf-8') if sys.version_info >= (3,) and type(text) is str else text)
         input_f.seek(0)
         with open(output_file,'w+') as output_f:
             with  output_to_debuglogger() as err_f:
@@ -168,8 +168,8 @@ def text2wngram(text, output_file, n=3, chars=63636363, words=9090909, compress=
     # Ensure that every parameter is of type 'str'
     cmd = [str(x) for x in cmd]
 
-    with tempfile.SpooledTemporaryFile(mode='w+') as input_f:
-        input_f.write(text)
+    with tempfile.SpooledTemporaryFile() as input_f:
+        input_f.write(text.encode('utf-8') if sys.version_info >= (3,) and type(text) is str else text)
         input_f.seek(0)
         with open(output_file,'w+') as output_f:
             with  output_to_debuglogger() as err_f:
@@ -223,7 +223,7 @@ def text2idngram(text, vocab_file, output_file, buffersize=100, hashtablesize=20
     
     with tempfile.SpooledTemporaryFile() as output_f:
         with tempfile.SpooledTemporaryFile() as input_f:
-            input_f.write(text)
+            input_f.write(text.encode('utf-8') if sys.version_info >= (3,) and type(text) is str else text)
             input_f.seek(0)
             with  output_to_debuglogger() as err_f:
                 with do_in_tempdir():
@@ -236,7 +236,10 @@ def text2idngram(text, vocab_file, output_file, buffersize=100, hashtablesize=20
     if exitcode != 0:
         raise ConversionError("'%r' returned with non-zero exit status '%s'" % (cmd, exitcode))
 
-    return output
+    if sys.version_info >= (3,) and type(output) is bytes:
+        output = output.decode('utf-8')
+
+    return output.strip()
 
 def ngram2mgram(input_file, output_file, n, m, words=False, ascii_idngram=False):
     """
@@ -305,7 +308,7 @@ def wngram2idngram(input_file, vocab_file, output_file, buffersize=100, hashtabl
     
     with tempfile.SpooledTemporaryFile() as output_f:
         with tempfile.SpooledTemporaryFile() as input_f:
-            input_f.write(text)
+            input_f.write(text.encode('utf-8') if sys.version_info >= (3,) and type(text) is str else text)
             input_f.seek(0)
             with  output_to_debuglogger() as err_f:
                 with do_in_tempdir():
@@ -318,7 +321,10 @@ def wngram2idngram(input_file, vocab_file, output_file, buffersize=100, hashtabl
     if exitcode != 0:
         raise ConversionError("'%r' returned with non-zero exit status '%s'" % (cmd, exitcode))
 
-    return output
+    if sys.version_info >= (3,) and type(output) is bytes:
+        output = output.decode('utf-8')
+
+    return output.strip()
 
 def idngram2stats(input_file, output_file, n=3, fof_size=50, verbosity=2, ascii_input=False):
     """
@@ -434,7 +440,10 @@ def idngram2lm(idngram_file, vocab_file, output_file, context_file=None, vocab_t
     if exitcode != 0:
         raise ConversionError("'%s' returned with non-zero exit status '%s'" % (cmd[0], exitcode))
 
-    return output
+    if sys.version_info >= (3,) and type(output) is bytes:
+        output = output.decode('utf-8')
+
+    return output.strip()
 
 def binlm2arpa(input_file, output_file, verbosity=2):
     """
@@ -460,7 +469,10 @@ def binlm2arpa(input_file, output_file, verbosity=2):
     if exitcode != 0:
         raise ConversionError("'%s' returned with non-zero exit status '%s'" % (cmd[0], exitcode))
 
-    return output
+    if sys.version_info >= (3,) and type(output) is bytes:
+        output = output.decode('utf-8')
+
+    return output.strip()
 
 def text2vocab(text, output_file, text2wfreq_kwargs={}, wfreq2vocab_kwargs={}):
     """
