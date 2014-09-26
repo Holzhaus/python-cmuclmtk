@@ -49,12 +49,13 @@ if sys.version_info < (3, 3):
     import distutils.spawn
 
 def check_cmuclmtk_installation():
+
     if sys.version_info < (3, 3):
         cmd_exists = distutils.spawn.find_executable
     else:
         cmd_exists = shutil.which
     # Required binaries for this module
-    cmds = ('text2wfreq', 'wfreq2vocab', 'text2idngram', 'idngram2lm')
+    cmds = ('text2wfreq', 'wfreq2vocab', 'text2wngram', 'text2idngram', 'ngram2mgram', 'wngram2idngram', 'idngram2stats', 'mergeidngram', 'idngram2lm', 'binlm2arpa')
     for cmd in cmds:
         if not cmd_exists(cmd):
             logger.critical("Can't find CMUCLMTK command '%s'! Please check if CMUCLMTK is installed and in your $PATH." % cmd)
