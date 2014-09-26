@@ -80,6 +80,16 @@ def do_in_tempdir():
     os.chdir(curdir)
     shutil.rmtree(tempdir)
 
+@contextmanager
+def output_to_debuglogger():
+    with tempfile.SpooledTemporaryFile() as f:
+        yield f
+        f.seek(0)
+        for line in f:
+            message = line.strip()
+            if message:
+                logger.debug(message)
+
 def text2wfreq(text, output_file, hashtablesize=1000000, verbosity=2):
     """
         List of every word which occurred in the text, along with its number of occurrences.
@@ -95,8 +105,9 @@ def text2wfreq(text, output_file, hashtablesize=1000000, verbosity=2):
         input_f.write(text)
         input_f.seek(0)
         with open(output_file,'w+') as output_f:
-            exitcode = subprocess.call(cmd, stdin=input_f, stdout=output_f)
-            logger.debug("Command '%s' returned with exit code '%d'." % (' '.join(cmd), exitcode))
+            with  output_to_debuglogger() as err_f:
+                exitcode = subprocess.call(cmd, stdin=input_f, stdout=output_f, stderr=err_f)
+        logger.debug("Command '%s' returned with exit code '%d'." % (' '.join(cmd), exitcode))
 
     if exitcode != 0:
         raise ConversionError("'%s' returned with non-zero exit status '%s'" % (cmd[0], exitcode))
@@ -122,7 +133,8 @@ def wfreq2vocab(wfreq_file, output_file, top=None, gt=None, records=1000000, ver
 
     with open(wfreq_file,'r') as input_f:
         with open(output_file,'w+') as output_f:
-            exitcode = subprocess.call(cmd, stdin=input_f, stdout=output_f)
+            with  output_to_debuglogger() as err_f:
+                exitcode = subprocess.call(cmd, stdin=input_f, stdout=output_f, stderr=err_f)
             logger.debug("Command '%s' returned with exit code '%d'." % (' '.join(cmd), exitcode))
 
     if exitcode != 0:
@@ -157,8 +169,9 @@ def text2wngram(text, output_file, n=3, chars=63636363, words=9090909, compress=
         input_f.write(text)
         input_f.seek(0)
         with open(output_file,'w+') as output_f:
-            with do_in_tempdir():
-                exitcode = subprocess.call(cmd, stdin=input_f, stdout=output_f)
+            with  output_to_debuglogger() as err_f:
+                with do_in_tempdir():
+                    exitcode = subprocess.call(cmd, stdin=input_f, stdout=output_f, stderr=err_f)
             logger.debug("Command '%s' returned with exit code '%d'." % (' '.join(cmd), exitcode))
 
     if exitcode != 0:
@@ -207,8 +220,9 @@ def text2idngram(text, vocab_file, output_file, buffersize=100, hashtablesize=20
         input_f.write(text)
         input_f.seek(0)
         with tempfile.SpooledTemporaryFile() as output_f:
-            with do_in_tempdir():
-                exitcode = subprocess.call(cmd, stdin=input_f, stdout=output_f)
+            with  output_to_debuglogger() as err_f:
+                with do_in_tempdir():
+                    exitcode = subprocess.call(cmd, stdin=input_f, stdout=output_f, stderr=err_f)
             logger.debug("Command '%s' returned with exit code '%d'." % (' '.join(cmd), exitcode))
             output = output_f.read()
 
@@ -239,7 +253,8 @@ def ngram2mgram(input_file, output_file, n, m, words=False, ascii_idngram=False)
 
     with open(input_file,'r') as input_f:
         with open(output_file,'w+') as output_f:
-            exitcode = subprocess.call(cmd, stdin=input_f, stdout=output_f)
+            with  output_to_debuglogger() as err_f:
+                exitcode = subprocess.call(cmd, stdin=input_f, stdout=output_f, stderr=err_f)
             logger.debug("Command '%s' returned with exit code '%d'." % (' '.join(cmd), exitcode))
 
     if exitcode != 0:
@@ -283,8 +298,9 @@ def wngram2idngram(input_file, vocab_file, output_file, buffersize=100, hashtabl
         input_f.write(text)
         input_f.seek(0)
         with tempfile.SpooledTemporaryFile() as output_f:
-            with do_in_tempdir():
-                exitcode = subprocess.call(cmd, stdin=input_f, stdout=output_f)
+            with  output_to_debuglogger() as err_f:
+                with do_in_tempdir():
+                    exitcode = subprocess.call(cmd, stdin=input_f, stdout=output_f, stderr=err_f)
             logger.debug("Command '%s' returned with exit code '%d'." % (' '.join(cmd), exitcode))
             output = output_f.read()
 
@@ -315,7 +331,8 @@ def idngram2stats(input_file, output_file, n=3, fof_size=50, verbosity=2, ascii_
 
     with open(input_file,'r') as input_f:
         with open(output_file,'w+') as output_f:
-            exitcode = subprocess.call(cmd, stdin=input_f, stdout=output_f)
+            with  output_to_debuglogger() as err_f:
+                exitcode = subprocess.call(cmd, stdin=input_f, stdout=output_f, stderr=err_f)
             logger.debug("Command '%s' returned with exit code '%d'." % (' '.join(cmd), exitcode))
 
     if exitcode != 0:
@@ -346,7 +363,8 @@ def mergeidngram(output_file, input_files, n=3, ascii_input=False, ascii_output=
     cmd = [str(x) for x in cmd]
 
     with open(output_file,'w+') as output_f:
-        exitcode = subprocess.call(cmd, stdout=output_f)
+        with  output_to_debuglogger() as err_f:
+            exitcode = subprocess.call(cmd, stdout=output_f, stderr=err_f)
         logger.debug("Command '%s' returned with exit code '%d'." % (' '.join(cmd), exitcode))
 
     if exitcode != 0:
@@ -391,7 +409,8 @@ def idngram2lm(idngram_file, vocab_file, output_file, context_file=None, vocab_t
     cmd = [str(x) for x in cmd]
 
     with tempfile.SpooledTemporaryFile() as output_f:
-        exitcode = subprocess.call(cmd, stdout=output_f)
+        with  output_to_debuglogger() as err_f:
+            exitcode = subprocess.call(cmd, stdout=output_f, stderr=err_f)
         logger.debug("Command '%s' returned with exit code '%d'." % (' '.join(cmd), exitcode))
         output = output_f.read()
 
@@ -414,7 +433,8 @@ def binlm2arpa(input_file, output_file, verbosity=2):
     cmd = [str(x) for x in cmd]
 
     with tempfile.SpooledTemporaryFile() as out:
-        exitcode = subprocess.call(cmd, stdout=out)
+        with  output_to_debuglogger() as err_f:
+            exitcode = subprocess.call(cmd, stdout=out, stderr=err_f)
         logger.debug("Command '%s' returned with exit code '%d'." % (' '.join(cmd), exitcode))
         output = out.read()
 
@@ -473,6 +493,8 @@ if __name__ == "__main__":
 
     # Initialize logging system
     logging.basicConfig()
+    if '--debug' in sys.argv:
+        logger.setLevel(logging.DEBUG)
     
     text = "This is a test"
 
