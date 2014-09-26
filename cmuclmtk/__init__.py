@@ -470,7 +470,7 @@ def text2lm(text, output_file, vocab_file=None, text2idngram_kwargs={}, idngram2
     return output
 
 if __name__ == "__main__":
-    
+
     # Initialize logging system
     logging.basicConfig()
     
