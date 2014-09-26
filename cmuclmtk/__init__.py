@@ -320,7 +320,7 @@ def idngram2stats(input_file, output_file, n=3, fof_size=50, verbosity=2, ascii_
     if exitcode != 0:
         raise ConversionError("'%s' returned with non-zero exit status '%s'" % (cmd[0], exitcode))
 
-def mergeidngram(output_file, *input_files, n=3, ascii_input=False, ascii_output=False):
+def mergeidngram(output_file, input_files, n=3, ascii_input=False, ascii_output=False):
     """
         Takes a set of id n-gram files (in either binary (by default) or ASCII (if specified) format - note that they should all be in the same format, however) and outputs a merged id N-gram.
 
