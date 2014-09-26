@@ -432,11 +432,11 @@ def binlm2arpa(input_file, output_file, verbosity=2):
     # Ensure that every parameter is of type 'str'
     cmd = [str(x) for x in cmd]
 
-    with tempfile.SpooledTemporaryFile() as out:
+    with tempfile.SpooledTemporaryFile() as output_f:
         with  output_to_debuglogger() as err_f:
-            exitcode = subprocess.call(cmd, stdout=out, stderr=err_f)
+            exitcode = subprocess.call(cmd, stdout=output_f, stderr=err_f)
         logger.debug("Command '%s' returned with exit code '%d'." % (' '.join(cmd), exitcode))
-        output = out.read()
+        output = output_f.read()
 
     if exitcode != 0:
         raise ConversionError("'%s' returned with non-zero exit status '%s'" % (cmd[0], exitcode))
