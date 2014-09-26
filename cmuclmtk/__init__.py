@@ -515,24 +515,36 @@ if __name__ == "__main__":
 
     logger = logging.getLogger()
     
-    # Set root logger to DEBUG level
-    if '--debug' in sys.argv:
-        logger.setLevel(logging.DEBUG)
+    # Set root logger to DEBUG or INFO level
+    logger.setLevel(logging.DEBUG if '--debug' in sys.argv else logging.INFO)
     
     text = "This is a test"
 
     # Create temporary directory
     tmpdir = tempfile.mkdtemp()
-
-    wfreq_file = os.path.join(tmpdir, "test.wfreq")
-    vocab_file = os.path.join(tmpdir, "test.vocab")
+    logger.info("Created temporary directory: '%s'", tmpdir)
 
     # Create a vocab file from text
-    text2wfreq(text, wfreq_file)
-    wfreq2vocab(wfreq_file, vocab_file)
+    logger.info("Creating languagemodel from text '%s'", text)
 
-    # Shortcut
-    text2vocab(text, vocab_file)
+    lm_file = os.path.join(tmpdir, "test.lm")
+    logger.info("Languagemodel will be written to: '%s'", lm_file)
+
+    try:
+        text2lm(text, lm_file)
+    except Exception:
+        logger.error("An error occured!", exc_info=True)
+    else:
+        logger.info("Languagemodel creation finished.")
+        logger.info("Checking if '%s' exists and is not empty...", lm_file)    
+        if os.path.exists(lm_file):
+            if os.path.getsize(lm_file) > 0:
+                logger.info("Languagemodel file '%s' seems to be okay.", lm_file)
+            else:
+                logger.critical("Languagemodel file '%s' is empty!", lm_file)
+        else:
+            logger.critical("Languagemodel file '%s' does not exist!", lm_file)
 
     # Remove temporary directory afterwards
     shutil.rmtree(tmpdir)
+    logger.info("Removed temporary directory: '%s'", tmpdir)
