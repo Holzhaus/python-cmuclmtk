@@ -3,7 +3,7 @@
 from setuptools import setup
 
 setup(name='cmuclmtk',
-      version='0.1.2',
+      version='0.1.3',
       description='Wrapper library for accessing the language model tools for CMU Sphinx (CMUCLMTK).',
       long_description=open('README.rst').read(),
       author='Jan Holthuis',
