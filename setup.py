@@ -9,7 +9,7 @@ if os.access('README.md', os.R_OK):
             long_description = f.read()
 
 setup(name='cmuclmtk',
-      version='0.1.4',
+      version='0.1.5',
       description='Wrapper library for accessing the language model tools for CMU Sphinx (CMUCLMTK).',
       long_description=long_description,
       author='Jan Holthuis',
