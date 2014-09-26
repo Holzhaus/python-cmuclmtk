@@ -62,7 +62,7 @@ def check_cmuclmtk_installation():
     return True
 
 if not check_cmuclmtk_installation():
-    raise OSError("CMUCLMTK command(s) missing or not in $PATH.")
+    raise ImportError("CMUCLMTK command(s) missing or not in $PATH.")
 
 class ConversionError(Exception):
     pass
