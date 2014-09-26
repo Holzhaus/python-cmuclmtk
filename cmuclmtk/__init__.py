@@ -467,3 +467,23 @@ def text2lm(text, output_file, vocab_file=None, text2idngram_kwargs={}, idngram2
             os.remove(used_vocab_file)
         os.remove(idngram_file)
     return output
+
+if __name__ == "__main__":
+
+    text = "This is a test"
+
+    # Create temporary directory
+    tmpdir = tempfile.mkdtemp()
+
+    wfreq_file = os.path.join(tmpdir, "test.wfreq")
+    vocab_file = os.path.join(tmpdir, "test.vocab")
+
+    # Create a vocab file from text
+    text2wfreq(text, wfreq_file)
+    wfreq2vocab(wfreq_file, vocab_file)
+
+    # Shortcut
+    text2vocab(text, vocab_file)
+
+    # Remove temporary directory afterwards
+    shutil.rmtree(tmpdir)
